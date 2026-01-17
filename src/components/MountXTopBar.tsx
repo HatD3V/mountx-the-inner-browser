@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Search, Globe, ChevronDown } from 'lucide-react';
 import { useMountX } from '@/context/MountXContext';
-import { searchWeb, isUrl, normalizeUrl } from '@/lib/searchClient';
+import { searchWeb, isUrl, normalizeUrl } from '@/lib/SearchAPI';
 import { cn } from '@/lib/utils';
 import type { Region } from '@/types/mountx';
 
