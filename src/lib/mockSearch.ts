@@ -88,7 +88,7 @@ const fetchWikipediaImages = async (query: string): Promise<SearchImage[]> => {
   try {
     const response = await fetch(endpoint.toString(), { cache: 'no-store' });
     if (!response.ok) {
-      throw new Error('Wikipedia image request failed.');
+      return [];
     }
 
     const data = (await response.json()) as {
