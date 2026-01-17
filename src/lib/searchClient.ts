@@ -70,13 +70,14 @@ const normalizeImages = (images: unknown): SearchImage[] => {
 
 const buildSearchEndpoint = (query: string, region?: Region) => {
   const isAbsoluteEndpoint = /^https?:\/\//.test(defaultSearchEndpoint);
-  const origin =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'http://localhost';
   const baseUrl = isAbsoluteEndpoint
     ? new URL(defaultSearchEndpoint)
-    : new URL(defaultSearchEndpoint, origin);
+    : new URL(
+        defaultSearchEndpoint,
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : 'http://localhost'
+      );
   baseUrl.searchParams.set('q', query);
   if (region) {
     baseUrl.searchParams.set('region', region);
