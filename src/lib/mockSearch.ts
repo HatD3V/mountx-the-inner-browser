@@ -16,30 +16,8 @@ interface DuckDuckGoResponse {
 }
 
 const imageCount = 6;
-const fallbackResults: SearchResult[] = [
-  {
-    title: 'Wikipedia',
-    url: 'https://en.wikipedia.org',
-    snippet: 'Explore summaries and articles from the free encyclopedia.',
-  },
-  {
-    title: 'MDN Web Docs',
-    url: 'https://developer.mozilla.org',
-    snippet: 'Reference documentation and guides for web technologies.',
-  },
-  {
-    title: 'GitHub',
-    url: 'https://github.com',
-    snippet: 'Discover repositories, topics, and developer tools.',
-  },
-  {
-    title: 'Stack Overflow',
-    url: 'https://stackoverflow.com',
-    snippet: 'Find community answers and programming knowledge.',
-  },
-];
 
-const buildImageResults = (query: string): SearchImage[] =>
+const buildUnsplashFallbackImages = (query: string): SearchImage[] =>
   Array.from({ length: imageCount }).map((_, index) => ({
     title: `${query} image ${index + 1}`,
     url: `https://source.unsplash.com/featured/400x300?${encodeURIComponent(query)}&sig=${index}`,
@@ -59,11 +37,7 @@ const topicToResult = (topic: DuckDuckGoTopic): SearchResult | null => {
   };
 };
 
-export async function searchWeb(query: string): Promise<{
-  results: SearchResult[];
-  images: SearchImage[];
-  isFallback: boolean;
-}> {
+const fetchDuckDuckGoResults = async (query: string): Promise<SearchResult[]> => {
   const endpoint = new URL('https://api.allorigins.win/raw');
   endpoint.searchParams.set(
     'url',
@@ -92,23 +66,69 @@ export async function searchWeb(query: string): Promise<{
       });
     }
 
-    return {
-      results,
-      images: buildImageResults(query),
-      isFallback: false,
-    };
+    return results;
   } catch (error) {
-    console.warn('Search request failed, using fallback results.', error);
-    const results = fallbackResults.map((result) => ({
-      ...result,
-      snippet: `${result.snippet} Suggested for "${query}".`,
-    }));
-    return {
-      results,
-      images: buildImageResults(query),
-      isFallback: true,
-    };
+    console.warn('Search request failed, returning empty results.', error);
+    return [];
   }
+};
+
+const fetchWikipediaImages = async (query: string): Promise<SearchImage[]> => {
+  const endpoint = new URL('https://en.wikipedia.org/w/api.php');
+  endpoint.searchParams.set('action', 'query');
+  endpoint.searchParams.set('format', 'json');
+  endpoint.searchParams.set('origin', '*');
+  endpoint.searchParams.set('generator', 'search');
+  endpoint.searchParams.set('gsrsearch', query);
+  endpoint.searchParams.set('gsrlimit', imageCount.toString());
+  endpoint.searchParams.set('prop', 'pageimages');
+  endpoint.searchParams.set('piprop', 'thumbnail');
+  endpoint.searchParams.set('pithumbsize', '400');
+
+  try {
+    const response = await fetch(endpoint.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Wikipedia image request failed.');
+    }
+
+    const data = (await response.json()) as {
+      query?: {
+        pages?: Record<
+          string,
+          { pageid: number; title: string; thumbnail?: { source: string } }
+        >;
+      };
+    };
+
+    const pages = Object.values(data.query?.pages ?? {});
+    return pages
+      .filter((page) => page.thumbnail?.source)
+      .map((page) => ({
+        title: page.title,
+        url: page.thumbnail?.source ?? '',
+        sourceUrl: `https://en.wikipedia.org/?curid=${page.pageid}`,
+      }))
+      .filter((image) => image.url.length > 0)
+      .slice(0, imageCount);
+  } catch (error) {
+    console.warn('Wikipedia image request failed.', error);
+    return [];
+  }
+};
+
+export async function searchWeb(query: string): Promise<{
+  results: SearchResult[];
+  images: SearchImage[];
+}> {
+  const [results, imagesResponse] = await Promise.all([
+    fetchDuckDuckGoResults(query),
+    fetchWikipediaImages(query),
+  ]);
+
+  const images =
+    imagesResponse.length > 0 ? imagesResponse : buildUnsplashFallbackImages(query);
+
+  return { results, images };
 }
 
 export function isUrl(input: string): boolean {
