@@ -20,6 +20,7 @@ type RawSearchImage = {
 };
 
 const defaultSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL ?? '/api/search';
+const isAbsoluteEndpoint = /^https?:\/\//.test(defaultSearchEndpoint);
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 
@@ -69,7 +70,14 @@ const normalizeImages = (images: unknown): SearchImage[] => {
 };
 
 const buildSearchEndpoint = (query: string, region?: Region) => {
-  const baseUrl = new URL(defaultSearchEndpoint, window.location.origin);
+  const baseUrl = isAbsoluteEndpoint
+    ? new URL(defaultSearchEndpoint)
+    : new URL(
+        defaultSearchEndpoint,
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : 'http://localhost'
+      );
   baseUrl.searchParams.set('q', query);
   if (region) {
     baseUrl.searchParams.set('region', region);
