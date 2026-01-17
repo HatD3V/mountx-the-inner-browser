@@ -55,30 +55,31 @@ export function SearchResultsView() {
             <span>Images</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {searchImages.map((image) => (
-              <button
-                key={image.url}
-                type="button"
-                onClick={() => {
-                  if (image.sourceUrl) {
-                    setCurrentUrl(image.sourceUrl);
+            {searchImages.map((image) => {
+              const destinationUrl = image.sourceUrl ?? image.url;
+              return (
+                <button
+                  key={image.url}
+                  type="button"
+                  onClick={() => {
+                    setCurrentUrl(destinationUrl);
                     setCurrentView('url');
-                  }
-                }}
-                className="group relative overflow-hidden rounded-xl border border-white/10 bg-black/20 text-left"
-              >
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="absolute bottom-2 left-2 text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {image.title}
-                </span>
-              </button>
-            ))}
+                  }}
+                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-black/20 text-left"
+                >
+                  <img
+                    src={image.url}
+                    alt={image.title}
+                    className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="absolute bottom-2 left-2 text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {image.title}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
