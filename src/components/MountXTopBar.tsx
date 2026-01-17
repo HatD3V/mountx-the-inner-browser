@@ -21,6 +21,7 @@ export function MountXTopBar() {
     setSearchQuery,
     setSearchResults,
     setSearchImages,
+    setSearchNotice,
     setIsSearching,
     setCurrentUrl,
     addHistoryEntry,
@@ -50,16 +51,27 @@ export function MountXTopBar() {
       setSearchQuery(input);
       addHistoryEntry('search', input);
       setIsSearching(true);
+      setSearchNotice(undefined);
       setCurrentView('search');
 
       try {
-        const { results, images } = await searchWeb(input);
+        const { results, images, isFallback } = await searchWeb(input);
         setSearchResults(results);
         setSearchImages(images);
+        if (isFallback) {
+          setSearchNotice({
+            message: 'Live results are unavailable right now. Showing curated links instead.',
+            variant: 'warning',
+          });
+        }
       } catch (error) {
         console.error('Search failed', error);
         setSearchResults([]);
         setSearchImages([]);
+        setSearchNotice({
+          message: 'Search failed. Please try again in a moment.',
+          variant: 'warning',
+        });
       } finally {
         setIsSearching(false);
       }

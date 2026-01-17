@@ -27,6 +27,11 @@ export interface SearchImage {
   sourceUrl?: string;
 }
 
+export interface SearchNotice {
+  message: string;
+  variant?: 'info' | 'warning';
+}
+
 export interface Settings {
   defaultRegion: Region;
   openInMountX: boolean;

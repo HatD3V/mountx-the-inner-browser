@@ -13,6 +13,7 @@ export function SearchResultsView() {
     isFavorite,
     setCurrentUrl,
     setCurrentView,
+    searchNotice,
   } = useMountX();
 
   if (isSearching) {
@@ -33,6 +34,19 @@ export function SearchResultsView() {
       <h2 className="text-lg font-medium mb-6">
         Results for "<span className="text-primary">{searchQuery}</span>"
       </h2>
+
+      {searchNotice && (
+        <div
+          className={cn(
+            "mb-6 rounded-xl border px-4 py-3 text-sm",
+            searchNotice.variant === 'warning'
+              ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-100"
+              : "border-primary/40 bg-primary/10 text-primary"
+          )}
+        >
+          {searchNotice.message}
+        </div>
+      )}
 
       {searchImages.length > 0 && (
         <section className="mb-8">
