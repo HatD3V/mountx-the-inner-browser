@@ -39,12 +39,73 @@ const fallbackResults: SearchResult[] = [
   },
 ];
 
-const buildImageResults = (query: string): SearchImage[] =>
+interface WikipediaThumbnail {
+  source?: string;
+}
+
+interface WikipediaPage {
+  title?: string;
+  fullurl?: string;
+  thumbnail?: WikipediaThumbnail;
+}
+
+interface WikipediaQueryResponse {
+  query?: {
+    pages?: Record<string, WikipediaPage>;
+  };
+}
+
+const buildUnsplashFallbackImages = (query: string): SearchImage[] =>
   Array.from({ length: imageCount }).map((_, index) => ({
     title: `${query} image ${index + 1}`,
     url: `https://source.unsplash.com/featured/400x300?${encodeURIComponent(query)}&sig=${index}`,
     sourceUrl: `https://unsplash.com/s/photos/${encodeURIComponent(query)}`,
   }));
+
+const fetchWikipediaImages = async (query: string): Promise<SearchImage[]> => {
+  const endpoint = new URL('https://en.wikipedia.org/w/api.php');
+  endpoint.searchParams.set('action', 'query');
+  endpoint.searchParams.set('format', 'json');
+  endpoint.searchParams.set('prop', 'pageimages|info');
+  endpoint.searchParams.set('inprop', 'url');
+  endpoint.searchParams.set('generator', 'search');
+  endpoint.searchParams.set('gsrsearch', query);
+  endpoint.searchParams.set('gsrlimit', imageCount.toString());
+  endpoint.searchParams.set('pithumbsize', '400');
+  endpoint.searchParams.set('origin', '*');
+
+  const response = await fetch(endpoint.toString(), { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Wikipedia image request failed.');
+  }
+
+  const data = (await response.json()) as WikipediaQueryResponse;
+  const pages = Object.values(data.query?.pages ?? {});
+
+  return pages
+    .map((page) => {
+      if (!page.thumbnail?.source) return null;
+      return {
+        title: page.title ?? query,
+        url: page.thumbnail.source,
+        sourceUrl: page.fullurl ?? 'https://en.wikipedia.org',
+      };
+    })
+    .filter((image): image is SearchImage => Boolean(image));
+};
+
+const resolveImages = async (query: string): Promise<SearchImage[]> => {
+  try {
+    const wikipediaImages = await fetchWikipediaImages(query);
+    if (wikipediaImages.length > 0) {
+      return wikipediaImages;
+    }
+  } catch (error) {
+    console.warn('Wikipedia image request failed, using fallback images.', error);
+  }
+
+  return buildUnsplashFallbackImages(query);
+};
 
 const flattenTopics = (topics: DuckDuckGoTopic[] = []): DuckDuckGoTopic[] =>
   topics.flatMap((topic) => (topic.Topics ? flattenTopics(topic.Topics) : topic));
@@ -62,8 +123,8 @@ const topicToResult = (topic: DuckDuckGoTopic): SearchResult | null => {
 export async function searchWeb(query: string): Promise<{
   results: SearchResult[];
   images: SearchImage[];
-  isFallback: boolean;
 }> {
+  const images = await resolveImages(query);
   const endpoint = new URL('https://api.allorigins.win/raw');
   endpoint.searchParams.set(
     'url',
@@ -94,8 +155,7 @@ export async function searchWeb(query: string): Promise<{
 
     return {
       results,
-      images: buildImageResults(query),
-      isFallback: false,
+      images,
     };
   } catch (error) {
     console.warn('Search request failed, using fallback results.', error);
@@ -105,8 +165,7 @@ export async function searchWeb(query: string): Promise<{
     }));
     return {
       results,
-      images: buildImageResults(query),
-      isFallback: true,
+      images,
     };
   }
 }
