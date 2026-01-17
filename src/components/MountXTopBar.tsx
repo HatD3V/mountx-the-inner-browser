@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Search, Globe, ChevronDown } from 'lucide-react';
 import { useMountX } from '@/context/MountXContext';
-import { searchMock, isUrl, normalizeUrl } from '@/lib/mockSearch';
+import { searchWeb, isUrl, normalizeUrl } from '@/lib/mockSearch';
 import { cn } from '@/lib/utils';
 import type { Region } from '@/types/mountx';
 
@@ -20,6 +20,7 @@ export function MountXTopBar() {
     setCurrentView,
     setSearchQuery,
     setSearchResults,
+    setSearchImages,
     setIsSearching,
     setCurrentUrl,
     addHistoryEntry,
@@ -51,9 +52,17 @@ export function MountXTopBar() {
       setIsSearching(true);
       setCurrentView('search');
 
-      const results = await searchMock(input);
-      setSearchResults(results);
-      setIsSearching(false);
+      try {
+        const { results, images } = await searchWeb(input);
+        setSearchResults(results);
+        setSearchImages(images);
+      } catch (error) {
+        console.error('Search failed', error);
+        setSearchResults([]);
+        setSearchImages([]);
+      } finally {
+        setIsSearching(false);
+      }
     }
   };
 

@@ -21,6 +21,12 @@ export interface SearchResult {
   snippet: string;
 }
 
+export interface SearchImage {
+  title: string;
+  url: string;
+  sourceUrl?: string;
+}
+
 export interface Settings {
   defaultRegion: Region;
   openInMountX: boolean;
