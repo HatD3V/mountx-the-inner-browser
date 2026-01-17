@@ -20,7 +20,7 @@ type RawSearchImage = {
 };
 
 const defaultSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL ?? '/api/search';
-const isAbsoluteEndpoint = /^https?:\/\//.test(defaultSearchEndpoint);
+const isAbsoluteEndpoint = /^https?:\/\//i.test(defaultSearchEndpoint);
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 
