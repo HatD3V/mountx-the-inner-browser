@@ -55,15 +55,9 @@ export function MountXTopBar() {
       setCurrentView('search');
 
       try {
-        const { results, images, isFallback } = await searchWeb(input);
+        const { results, images } = await searchWeb(input);
         setSearchResults(results);
         setSearchImages(images);
-        if (isFallback) {
-          setSearchNotice({
-            message: 'Live results are unavailable right now. Showing curated links instead.',
-            variant: 'warning',
-          });
-        }
       } catch (error) {
         console.error('Search failed', error);
         setSearchResults([]);

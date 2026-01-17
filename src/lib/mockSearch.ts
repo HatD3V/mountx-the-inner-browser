@@ -15,39 +15,51 @@ interface DuckDuckGoResponse {
   Results?: DuckDuckGoTopic[];
 }
 
-const imageCount = 6;
-const fallbackResults: SearchResult[] = [
-  {
-    title: 'Wikipedia',
-    url: 'https://en.wikipedia.org',
-    snippet: 'Explore summaries and articles from the free encyclopedia.',
-  },
-  {
-    title: 'MDN Web Docs',
-    url: 'https://developer.mozilla.org',
-    snippet: 'Reference documentation and guides for web technologies.',
-  },
-  {
-    title: 'GitHub',
-    url: 'https://github.com',
-    snippet: 'Discover repositories, topics, and developer tools.',
-  },
-  {
-    title: 'Stack Overflow',
-    url: 'https://stackoverflow.com',
-    snippet: 'Find community answers and programming knowledge.',
-  },
-];
+interface WikipediaPageImage {
+  pageid: number;
+  title: string;
+  thumbnail?: {
+    source: string;
+  };
+}
 
-const buildImageResults = (query: string): SearchImage[] =>
-  Array.from({ length: imageCount }).map((_, index) => {
-    const imageUrl = `https://source.unsplash.com/600x400/?${encodeURIComponent(`${query},${index + 1}`)}`;
-    return {
-      title: `${query} image ${index + 1}`,
-      url: imageUrl,
-      sourceUrl: imageUrl,
-    };
-  });
+interface WikipediaQueryResponse {
+  query?: {
+    pages?: Record<string, WikipediaPageImage>;
+  };
+}
+
+const imageCount = 6;
+
+const fetchWikipediaImages = async (query: string): Promise<SearchImage[]> => {
+  const endpoint = new URL('https://en.wikipedia.org/w/api.php');
+  endpoint.searchParams.set('action', 'query');
+  endpoint.searchParams.set('format', 'json');
+  endpoint.searchParams.set('origin', '*');
+  endpoint.searchParams.set('generator', 'search');
+  endpoint.searchParams.set('gsrsearch', query);
+  endpoint.searchParams.set('gsrlimit', imageCount.toString());
+  endpoint.searchParams.set('prop', 'pageimages');
+  endpoint.searchParams.set('piprop', 'thumbnail');
+  endpoint.searchParams.set('pithumbsize', '400');
+
+  const response = await fetch(endpoint.toString(), { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Image search failed.');
+  }
+
+  const data = (await response.json()) as WikipediaQueryResponse;
+  const pages = Object.values(data.query?.pages ?? {});
+
+  return pages
+    .filter((page) => Boolean(page.thumbnail?.source))
+    .slice(0, imageCount)
+    .map((page) => ({
+      title: page.title,
+      url: page.thumbnail?.source ?? '',
+      sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+    }));
+};
 
 const flattenTopics = (topics: DuckDuckGoTopic[] = []): DuckDuckGoTopic[] =>
   topics.flatMap((topic) => (topic.Topics ? flattenTopics(topic.Topics) : topic));
@@ -65,7 +77,6 @@ const topicToResult = (topic: DuckDuckGoTopic): SearchResult | null => {
 export async function searchWeb(query: string): Promise<{
   results: SearchResult[];
   images: SearchImage[];
-  isFallback: boolean;
 }> {
   const endpoint = new URL('https://api.allorigins.win/raw');
   endpoint.searchParams.set(
@@ -74,52 +85,42 @@ export async function searchWeb(query: string): Promise<{
   );
   endpoint.searchParams.set('cb', Date.now().toString());
 
-  try {
-    const response = await fetch(endpoint.toString(), { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error('Search request failed.');
-    }
+  const [searchResponse, images] = await Promise.all([
+    fetch(endpoint.toString(), { cache: 'no-store' }),
+    fetchWikipediaImages(query).catch(() => []),
+  ]);
 
-    const data = (await response.json()) as DuckDuckGoResponse;
-    const rawResults = [...(data.Results ?? []), ...flattenTopics(data.RelatedTopics)];
-    const results = rawResults
-      .map(topicToResult)
-      .filter((result): result is SearchResult => Boolean(result))
-      .filter((result) => {
-        try {
-          const hostname = new URL(result.url).hostname;
-          return !hostname.includes('duckduckgo.com');
-        } catch {
-          return true;
-        }
-      })
-      .slice(0, 8);
-
-    if (results.length === 0 && data.AbstractURL) {
-      results.push({
-        title: data.Heading || query,
-        url: data.AbstractURL,
-        snippet: data.AbstractText || data.Abstract || `Learn more about ${query}.`,
-      });
-    }
-
-    return {
-      results,
-      images: buildImageResults(query),
-      isFallback: false,
-    };
-  } catch (error) {
-    console.warn('Search request failed, using fallback results.', error);
-    const results = fallbackResults.map((result) => ({
-      ...result,
-      snippet: `${result.snippet} Suggested for "${query}".`,
-    }));
-    return {
-      results,
-      images: buildImageResults(query),
-      isFallback: true,
-    };
+  if (!searchResponse.ok) {
+    throw new Error('Search request failed.');
   }
+
+  const data = (await searchResponse.json()) as DuckDuckGoResponse;
+  const rawResults = [...(data.Results ?? []), ...flattenTopics(data.RelatedTopics)];
+  const results = rawResults
+    .map(topicToResult)
+    .filter((result): result is SearchResult => Boolean(result))
+    .filter((result) => {
+      try {
+        const hostname = new URL(result.url).hostname;
+        return !hostname.includes('duckduckgo.com');
+      } catch {
+        return true;
+      }
+    })
+    .slice(0, 8);
+
+  if (results.length === 0 && data.AbstractURL) {
+    results.push({
+      title: data.Heading || query,
+      url: data.AbstractURL,
+      snippet: data.AbstractText || data.Abstract || `Learn more about ${query}.`,
+    });
+  }
+
+  return {
+    results,
+    images,
+  };
 }
 
 export function isUrl(input: string): boolean {
