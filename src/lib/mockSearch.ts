@@ -120,15 +120,22 @@ export async function searchWeb(query: string): Promise<{
   results: SearchResult[];
   images: SearchImage[];
 }> {
-  const [results, imagesResponse] = await Promise.all([
-    fetchDuckDuckGoResults(query),
-    fetchWikipediaImages(query),
-  ]);
+  try {
+    const [results, imagesFromWikipedia] = await Promise.all([
+      fetchDuckDuckGoResults(query),
+      fetchWikipediaImages(query),
+    ]);
 
-  const images =
-    imagesResponse.length > 0 ? imagesResponse : buildUnsplashFallbackImages(query);
+    const images =
+      imagesFromWikipedia.length > 0
+        ? imagesFromWikipedia
+        : buildUnsplashFallbackImages(query);
 
-  return { results, images };
+    return { results, images };
+  } catch (error) {
+    console.warn('Search request failed, returning fallback results.', error);
+    return { results: [], images: buildUnsplashFallbackImages(query) };
+  }
 }
 
 export function isUrl(input: string): boolean {
