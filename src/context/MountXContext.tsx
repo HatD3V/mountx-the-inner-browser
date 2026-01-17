@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useMountXStore } from '@/hooks/useMountXStore';
-import type { Region, HistoryEntry, FavoriteItem, Settings, SearchResult } from '@/types/mountx';
+import type { Region, HistoryEntry, FavoriteItem, Settings, SearchResult, SearchImage, SearchNotice } from '@/types/mountx';
 
 interface MountXContextType {
   // Navigation state
@@ -12,6 +12,10 @@ interface MountXContextType {
   setSearchQuery: (query: string) => void;
   searchResults: SearchResult[];
   setSearchResults: (results: SearchResult[]) => void;
+  searchImages: SearchImage[];
+  setSearchImages: (images: SearchImage[]) => void;
+  searchNotice?: SearchNotice;
+  setSearchNotice: (notice?: SearchNotice) => void;
   isSearching: boolean;
   setIsSearching: (loading: boolean) => void;
   
@@ -52,6 +56,8 @@ export function MountXProvider({ children }: { children: ReactNode }) {
   const [currentView, setCurrentView] = useState<'home' | 'search' | 'url' | 'history' | 'favorites' | 'settings'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchImages, setSearchImages] = useState<SearchImage[]>([]);
+  const [searchNotice, setSearchNotice] = useState<SearchNotice | undefined>(undefined);
   const [isSearching, setIsSearching] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -98,6 +104,10 @@ export function MountXProvider({ children }: { children: ReactNode }) {
         setSearchQuery,
         searchResults,
         setSearchResults,
+        searchImages,
+        setSearchImages,
+        searchNotice,
+        setSearchNotice,
         isSearching,
         setIsSearching,
         currentUrl,

@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Search, Globe, ChevronDown } from 'lucide-react';
 import { useMountX } from '@/context/MountXContext';
-import { searchMock, isUrl, normalizeUrl } from '@/lib/mockSearch';
+import { searchWeb, isUrl, normalizeUrl } from '@/lib/mockSearch';
 import { cn } from '@/lib/utils';
 import type { Region } from '@/types/mountx';
 
@@ -20,6 +20,8 @@ export function MountXTopBar() {
     setCurrentView,
     setSearchQuery,
     setSearchResults,
+    setSearchImages,
+    setSearchNotice,
     setIsSearching,
     setCurrentUrl,
     addHistoryEntry,
@@ -49,11 +51,30 @@ export function MountXTopBar() {
       setSearchQuery(input);
       addHistoryEntry('search', input);
       setIsSearching(true);
+      setSearchNotice(undefined);
       setCurrentView('search');
 
-      const results = await searchMock(input);
-      setSearchResults(results);
-      setIsSearching(false);
+      try {
+        const { results, images, isFallback } = await searchWeb(input);
+        setSearchResults(results);
+        setSearchImages(images);
+        if (isFallback) {
+          setSearchNotice({
+            message: 'Live results are unavailable right now. Showing curated links instead.',
+            variant: 'warning',
+          });
+        }
+      } catch (error) {
+        console.error('Search failed', error);
+        setSearchResults([]);
+        setSearchImages([]);
+        setSearchNotice({
+          message: 'Search failed. Please try again in a moment.',
+          variant: 'warning',
+        });
+      } finally {
+        setIsSearching(false);
+      }
     }
   };
 
