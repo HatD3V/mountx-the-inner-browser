@@ -4,7 +4,7 @@ import { useMountX } from '@/context/MountXContext';
 import { cn } from '@/lib/utils';
 
 export function UrlPreviewView() {
-  const { currentUrl, toggleFavorite, isFavorite } = useMountX();
+  const { currentUrl, toggleFavorite, isFavorite, previewReloadKey } = useMountX();
 
   const hostname = (() => {
     try {
@@ -13,6 +13,19 @@ export function UrlPreviewView() {
       return currentUrl;
     }
   })();
+
+  const previewUrl = (() => {
+    if (!currentUrl) {
+      return '';
+    }
+    try {
+      return new URL(currentUrl).toString();
+    } catch {
+      return `https://${currentUrl}`;
+    }
+  })();
+
+  const externalUrl = previewUrl || currentUrl;
 
   return (
     <motion.div
@@ -54,7 +67,7 @@ export function UrlPreviewView() {
               <Star className={cn("w-5 h-5", isFavorite(currentUrl) && "fill-current")} />
             </button>
             <a
-              href={currentUrl}
+              href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="glass-button-primary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium"
@@ -65,7 +78,7 @@ export function UrlPreviewView() {
           </div>
         </motion.div>
 
-        {/* Mock Browser Window */}
+        {/* Browser Window */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -85,26 +98,38 @@ export function UrlPreviewView() {
           </div>
 
           {/* Content Area */}
-          <div className="aspect-video flex flex-col items-center justify-center p-8 bg-gradient-to-b from-background/50 to-background/80">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 animate-glow">
-              <Globe className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="text-2xl font-semibold mb-2">Visiting {hostname}</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              This is where the site would render via MountX. In a full implementation, 
-              the website content would be displayed here through a secure proxy.
-            </p>
-            <div className="flex items-center gap-3">
-              <a
-                href={currentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-button-primary px-6 py-2.5 rounded-xl flex items-center gap-2 font-medium"
-              >
-                <span>Open in new tab</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
+          <div className="aspect-video relative bg-gradient-to-b from-background/50 to-background/80">
+            <iframe
+              title={`Preview of ${hostname}`}
+              src={previewUrl}
+              key={`${previewUrl}-${previewReloadKey}`}
+              className="absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              allow="clipboard-read; clipboard-write; fullscreen; geolocation; microphone; camera; autoplay; encrypted-media; picture-in-picture"
+            />
+            {!previewUrl && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 animate-glow">
+                  <Globe className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-semibold mb-2">Ready to preview</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  Enter a URL to load the page in the preview window.
+                </p>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="glass-button-primary px-6 py-2.5 rounded-xl flex items-center gap-2 font-medium"
+                  >
+                    <span>Open in new tab</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

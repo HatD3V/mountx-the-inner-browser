@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Search, Globe, ChevronDown } from 'lucide-react';
 import { useMountX } from '@/context/MountXContext';
@@ -22,15 +22,23 @@ export function MountXTopBar() {
     setSearchResults,
     setIsSearching,
     setCurrentUrl,
+    currentUrl,
     addHistoryEntry,
     canGoBack,
     canGoForward,
     goBack,
     goForward,
+    reloadPreview,
   } = useMountX();
 
   const [inputValue, setInputValue] = useState('');
   const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+
+  useEffect(() => {
+    if (currentUrl) {
+      setInputValue(currentUrl);
+    }
+  }, [currentUrl]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -58,9 +66,12 @@ export function MountXTopBar() {
   };
 
   const handleReload = () => {
-    // Simulate reload
     if (inputValue.trim()) {
       handleSubmit({ preventDefault: () => {} } as FormEvent);
+      return;
+    }
+    if (currentUrl) {
+      reloadPreview();
     }
   };
 

@@ -18,6 +18,8 @@ interface MountXContextType {
   // URL state
   currentUrl: string;
   setCurrentUrl: (url: string) => void;
+  previewReloadKey: number;
+  reloadPreview: () => void;
   
   // Navigation history for back/forward
   navHistory: string[];
@@ -55,6 +57,7 @@ export function MountXProvider({ children }: { children: ReactNode }) {
   const [isSearching, setIsSearching] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [previewReloadKey, setPreviewReloadKey] = useState(0);
   
   // Navigation history for back/forward
   const [navHistory, setNavHistory] = useState<string[]>(['home']);
@@ -88,6 +91,10 @@ export function MountXProvider({ children }: { children: ReactNode }) {
     setNavHistory(newHistory);
     setNavIndex(newHistory.length - 1);
   };
+
+  const reloadPreview = () => {
+    setPreviewReloadKey((prev) => prev + 1);
+  };
   
   return (
     <MountXContext.Provider
@@ -102,6 +109,8 @@ export function MountXProvider({ children }: { children: ReactNode }) {
         setIsSearching,
         currentUrl,
         setCurrentUrl,
+        previewReloadKey,
+        reloadPreview,
         navHistory,
         navIndex,
         canGoBack,
