@@ -1,121 +1,125 @@
-import type { SearchResult } from '@/types/mountx';
+import type { SearchImage, SearchResult } from '@/types/mountx';
 
-const mockResults: Record<string, SearchResult[]> = {
-  default: [
-    {
-      title: 'Wikipedia - The Free Encyclopedia',
-      url: 'https://en.wikipedia.org',
-      snippet: 'Wikipedia is a free online encyclopedia, created and edited by volunteers around the world and hosted by the Wikimedia Foundation.',
-    },
-    {
-      title: 'GitHub: Let\'s build from here',
-      url: 'https://github.com',
-      snippet: 'GitHub is where over 100 million developers shape the future of software, together. Contribute to the open source community.',
-    },
-    {
-      title: 'Stack Overflow - Where Developers Learn & Share',
-      url: 'https://stackoverflow.com',
-      snippet: 'Stack Overflow is the largest, most trusted online community for developers to learn, share their knowledge.',
-    },
-    {
-      title: 'MDN Web Docs',
-      url: 'https://developer.mozilla.org',
-      snippet: 'Resources for developers, by developers. Documentation for Web technologies including HTML, CSS, JavaScript, and APIs.',
-    },
-    {
-      title: 'Reddit - Pair with a community',
-      url: 'https://reddit.com',
-      snippet: 'Reddit is a network of communities where people can dive into their interests, hobbies and passions.',
-    },
-  ],
-  react: [
-    {
-      title: 'React – A JavaScript library for building user interfaces',
-      url: 'https://react.dev',
-      snippet: 'React lets you build user interfaces out of individual pieces called components. Create your own React components like Thumbnail, LikeButton, and Video.',
-    },
-    {
-      title: 'Getting Started – React',
-      url: 'https://react.dev/learn',
-      snippet: 'Welcome to the React documentation! This page will give you an introduction to the 80% of React concepts that you will use on a daily basis.',
-    },
-    {
-      title: 'React Tutorial - W3Schools',
-      url: 'https://www.w3schools.com/react',
-      snippet: 'React is a JavaScript library for building user interfaces. React is used to build single-page applications.',
-    },
-    {
-      title: 'React on GitHub',
-      url: 'https://github.com/facebook/react',
-      snippet: 'The library for web and native user interfaces. React 18.2.0 with concurrent features and improved performance.',
-    },
-  ],
-  javascript: [
-    {
-      title: 'JavaScript | MDN',
-      url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
-      snippet: 'JavaScript (JS) is a lightweight interpreted programming language with first-class functions.',
-    },
-    {
-      title: 'JavaScript.com',
-      url: 'https://www.javascript.com',
-      snippet: 'Learn JavaScript online in an interactive environment. Tutorials and courses from beginner to advanced.',
-    },
-    {
-      title: 'The Modern JavaScript Tutorial',
-      url: 'https://javascript.info',
-      snippet: 'Modern JavaScript Tutorial: simple, but detailed explanations with examples and tasks.',
-    },
-  ],
-  weather: [
-    {
-      title: 'Weather.com - Local Weather Forecast',
-      url: 'https://weather.com',
-      snippet: 'Check your local weather forecast, current conditions, and get regional weather updates.',
-    },
-    {
-      title: 'AccuWeather - Weather Forecasts',
-      url: 'https://accuweather.com',
-      snippet: 'Get accurate weather forecasts for any city. Hourly and daily forecasts with precipitation chance.',
-    },
-  ],
-  news: [
-    {
-      title: 'BBC News - World News',
-      url: 'https://bbc.com/news',
-      snippet: 'Breaking news, features and analysis from around the world. The BBC is an internationally trusted news source.',
-    },
-    {
-      title: 'Reuters | Breaking International News',
-      url: 'https://reuters.com',
-      snippet: 'Find latest news from every corner of the globe. Reuters, the news and media division of Thomson Reuters.',
-    },
-    {
-      title: 'The New York Times',
-      url: 'https://nytimes.com',
-      snippet: 'Live news, investigations, opinion, photos and video by the journalists of The New York Times from more than 150 countries.',
-    },
-  ],
+interface DuckDuckGoTopic {
+  Text?: string;
+  FirstURL?: string;
+  Topics?: DuckDuckGoTopic[];
+}
+
+interface DuckDuckGoResponse {
+  Abstract?: string;
+  AbstractText?: string;
+  AbstractURL?: string;
+  Heading?: string;
+  RelatedTopics?: DuckDuckGoTopic[];
+  Results?: DuckDuckGoTopic[];
+}
+
+const imageCount = 6;
+const fallbackResults: SearchResult[] = [
+  {
+    title: 'Wikipedia',
+    url: 'https://en.wikipedia.org',
+    snippet: 'Explore summaries and articles from the free encyclopedia.',
+  },
+  {
+    title: 'MDN Web Docs',
+    url: 'https://developer.mozilla.org',
+    snippet: 'Reference documentation and guides for web technologies.',
+  },
+  {
+    title: 'GitHub',
+    url: 'https://github.com',
+    snippet: 'Discover repositories, topics, and developer tools.',
+  },
+  {
+    title: 'Stack Overflow',
+    url: 'https://stackoverflow.com',
+    snippet: 'Find community answers and programming knowledge.',
+  },
+];
+
+const buildImageResults = (query: string): SearchImage[] =>
+  Array.from({ length: imageCount }).map((_, index) => {
+    const imageUrl = `https://source.unsplash.com/600x400/?${encodeURIComponent(`${query},${index + 1}`)}`;
+    return {
+      title: `${query} image ${index + 1}`,
+      url: imageUrl,
+      sourceUrl: imageUrl,
+    };
+  });
+
+const flattenTopics = (topics: DuckDuckGoTopic[] = []): DuckDuckGoTopic[] =>
+  topics.flatMap((topic) => (topic.Topics ? flattenTopics(topic.Topics) : topic));
+
+const topicToResult = (topic: DuckDuckGoTopic): SearchResult | null => {
+  if (!topic.Text || !topic.FirstURL) return null;
+  const [title, snippet] = topic.Text.split(' - ');
+  return {
+    title: title || topic.Text,
+    url: topic.FirstURL,
+    snippet: snippet || topic.Text,
+  };
 };
 
-export async function searchMock(query: string): Promise<SearchResult[]> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
+export async function searchWeb(query: string): Promise<{
+  results: SearchResult[];
+  images: SearchImage[];
+  isFallback: boolean;
+}> {
+  const endpoint = new URL('https://api.allorigins.win/raw');
+  endpoint.searchParams.set(
+    'url',
+    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1&t=mountx`
+  );
+  endpoint.searchParams.set('cb', Date.now().toString());
 
-  const lowerQuery = query.toLowerCase();
-  
-  // Check for keyword matches
-  for (const key of Object.keys(mockResults)) {
-    if (key !== 'default' && lowerQuery.includes(key)) {
-      return mockResults[key];
+  try {
+    const response = await fetch(endpoint.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Search request failed.');
     }
-  }
 
-  // Return default results with modified snippets to include query
-  return mockResults.default.map(result => ({
-    ...result,
-    snippet: `${result.snippet} Related to your search for "${query}".`,
-  }));
+    const data = (await response.json()) as DuckDuckGoResponse;
+    const rawResults = [...(data.Results ?? []), ...flattenTopics(data.RelatedTopics)];
+    const results = rawResults
+      .map(topicToResult)
+      .filter((result): result is SearchResult => Boolean(result))
+      .filter((result) => {
+        try {
+          const hostname = new URL(result.url).hostname;
+          return !hostname.includes('duckduckgo.com');
+        } catch {
+          return true;
+        }
+      })
+      .slice(0, 8);
+
+    if (results.length === 0 && data.AbstractURL) {
+      results.push({
+        title: data.Heading || query,
+        url: data.AbstractURL,
+        snippet: data.AbstractText || data.Abstract || `Learn more about ${query}.`,
+      });
+    }
+
+    return {
+      results,
+      images: buildImageResults(query),
+      isFallback: false,
+    };
+  } catch (error) {
+    console.warn('Search request failed, using fallback results.', error);
+    const results = fallbackResults.map((result) => ({
+      ...result,
+      snippet: `${result.snippet} Suggested for "${query}".`,
+    }));
+    return {
+      results,
+      images: buildImageResults(query),
+      isFallback: true,
+    };
+  }
 }
 
 export function isUrl(input: string): boolean {

@@ -1,10 +1,16 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Globe, ExternalLink, Star, Lock } from 'lucide-react';
+import { Globe, Star, Lock } from 'lucide-react';
 import { useMountX } from '@/context/MountXContext';
 import { cn } from '@/lib/utils';
 
 export function UrlPreviewView() {
   const { currentUrl, toggleFavorite, isFavorite } = useMountX();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, [currentUrl]);
 
   const hostname = (() => {
     try {
@@ -53,15 +59,6 @@ export function UrlPreviewView() {
             >
               <Star className={cn("w-5 h-5", isFavorite(currentUrl) && "fill-current")} />
             </button>
-            <a
-              href={currentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glass-button-primary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium"
-            >
-              <span>Open directly</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
           </div>
         </motion.div>
 
@@ -85,26 +82,29 @@ export function UrlPreviewView() {
           </div>
 
           {/* Content Area */}
-          <div className="aspect-video flex flex-col items-center justify-center p-8 bg-gradient-to-b from-background/50 to-background/80">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 animate-glow">
-              <Globe className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="text-2xl font-semibold mb-2">Visiting {hostname}</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              This is where the site would render via MountX. In a full implementation, 
-              the website content would be displayed here through a secure proxy.
-            </p>
-            <div className="flex items-center gap-3">
-              <a
-                href={currentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-button-primary px-6 py-2.5 rounded-xl flex items-center gap-2 font-medium"
-              >
-                <span>Open in new tab</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
+          <div className="relative aspect-video bg-gradient-to-b from-background/50 to-background/80">
+            {isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center animate-glow">
+                  <Globe className="w-8 h-8 text-primary" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm">Loading {hostname}</p>
+                  <p className="text-xs text-muted-foreground/70">Rendering inside MountX</p>
+                </div>
+              </div>
+            )}
+            <iframe
+              key={currentUrl}
+              src={currentUrl}
+              title={`Preview of ${hostname}`}
+              className={cn(
+                "absolute inset-0 h-full w-full border-0 transition-opacity",
+                isLoading ? "opacity-0" : "opacity-100"
+              )}
+              onLoad={() => setIsLoading(false)}
+              onError={() => setIsLoading(false)}
+            />
           </div>
         </motion.div>
       </div>
