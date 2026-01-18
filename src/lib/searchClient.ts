@@ -19,7 +19,9 @@ type RawSearchImage = {
   source_url?: unknown;
 };
 
-const defaultSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL ?? '/api/search';
+const defaultSearchEndpoint =
+  import.meta.env.VITE_SEARCH_API_URL ??
+  'https://mountxwork.hatdv617.workers.dev/api/search';
 const isAbsoluteEndpoint = /^https?:\/\//i.test(defaultSearchEndpoint);
 
 const isString = (value: unknown): value is string => typeof value === 'string';
