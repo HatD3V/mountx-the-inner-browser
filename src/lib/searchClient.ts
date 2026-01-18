@@ -5,6 +5,18 @@ type RawSearchResponse = {
   images?: unknown;
 };
 
+type DuckDuckGoTopic = {
+  Text?: unknown;
+  FirstURL?: unknown;
+  Topics?: unknown;
+};
+
+type DuckDuckGoResponse = {
+  Results?: unknown;
+  RelatedTopics?: unknown;
+  Heading?: unknown;
+};
+
 type RawSearchResult = {
   title?: unknown;
   url?: unknown;
@@ -19,8 +31,11 @@ type RawSearchImage = {
   source_url?: unknown;
 };
 
-const defaultSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL ?? '/api/search';
+const configuredSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL;
+const fallbackSearchEndpoint = 'https://api.duckduckgo.com/';
+const defaultSearchEndpoint = configuredSearchEndpoint ?? fallbackSearchEndpoint;
 const isAbsoluteEndpoint = /^https?:\/\//i.test(defaultSearchEndpoint);
+const useDuckDuckGoFallback = !configuredSearchEndpoint;
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 
@@ -69,7 +84,49 @@ const normalizeImages = (images: unknown): SearchImage[] => {
     .filter((image): image is SearchImage => Boolean(image));
 };
 
+const normalizeDuckDuckGoResults = (data: DuckDuckGoResponse): SearchResult[] => {
+  const results: SearchResult[] = [];
+  const processTopic = (topic: DuckDuckGoTopic) => {
+    const text = isString(topic.Text) ? topic.Text : '';
+    const url = isString(topic.FirstURL) ? topic.FirstURL : '';
+    const nestedTopics = Array.isArray(topic.Topics) ? topic.Topics : [];
+
+    if (text && url) {
+      const [title, snippet] = text.includes(' - ')
+        ? text.split(' - ', 2)
+        : [text, ''];
+      results.push({
+        title,
+        url,
+        snippet,
+      });
+    }
+
+    nestedTopics.forEach((nested) => {
+      processTopic(nested as DuckDuckGoTopic);
+    });
+  };
+
+  const candidateLists = [data.Results, data.RelatedTopics];
+  candidateLists.forEach((list) => {
+    if (Array.isArray(list)) {
+      list.forEach((topic) => processTopic(topic as DuckDuckGoTopic));
+    }
+  });
+
+  return results;
+};
+
 const buildSearchEndpoint = (query: string, region?: Region) => {
+  if (useDuckDuckGoFallback) {
+    const baseUrl = new URL(defaultSearchEndpoint);
+    baseUrl.searchParams.set('q', query);
+    baseUrl.searchParams.set('format', 'json');
+    baseUrl.searchParams.set('no_redirect', '1');
+    baseUrl.searchParams.set('no_html', '1');
+    return baseUrl.toString();
+  }
+
   const baseUrl = isAbsoluteEndpoint
     ? new URL(defaultSearchEndpoint)
     : new URL(
@@ -105,8 +162,10 @@ export async function searchWeb(
   const data = (await response.json()) as RawSearchResponse;
 
   return {
-    results: normalizeResults(data.results),
-    images: normalizeImages(data.images),
+    results: useDuckDuckGoFallback
+      ? normalizeDuckDuckGoResults(data as DuckDuckGoResponse)
+      : normalizeResults(data.results),
+    images: useDuckDuckGoFallback ? [] : normalizeImages(data.images),
   };
 }
 
