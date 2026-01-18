@@ -81,7 +81,7 @@ const buildSearchEndpoint = (query: string, region?: Region) => {
           : 'http://localhost'
       );
   baseUrl.searchParams.set('q', query);
-  if (region) {
+  if (region && region !== 'global') {
     baseUrl.searchParams.set('region', region);
   }
 
