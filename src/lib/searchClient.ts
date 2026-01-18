@@ -33,7 +33,8 @@ type RawSearchImage = {
 
 const configuredSearchEndpoint = import.meta.env.VITE_SEARCH_API_URL;
 const fallbackSearchEndpoint = 'https://api.duckduckgo.com/';
-const fallbackProxyEndpoint = 'https://api.allorigins.win/raw?url=';
+const fallbackProxyEndpoint =
+  import.meta.env.VITE_SEARCH_PROXY_URL ?? 'https://api.allorigins.win/raw?url=';
 const defaultSearchEndpoint = configuredSearchEndpoint ?? fallbackSearchEndpoint;
 const isAbsoluteEndpoint = /^https?:\/\//i.test(defaultSearchEndpoint);
 const useDuckDuckGoFallback = !configuredSearchEndpoint;
@@ -128,10 +129,18 @@ const buildDuckDuckGoEndpoint = (query: string) => {
   return baseUrl.toString();
 };
 
+const buildProxyUrl = (targetUrl: string) => {
+  if (fallbackProxyEndpoint.includes('{url}')) {
+    return fallbackProxyEndpoint.replace('{url}', encodeURIComponent(targetUrl));
+  }
+
+  return `${fallbackProxyEndpoint}${encodeURIComponent(targetUrl)}`;
+};
+
 const buildSearchEndpoint = (query: string, region?: Region) => {
   if (useDuckDuckGoFallback) {
     const duckDuckGoUrl = buildDuckDuckGoEndpoint(query);
-    return `${fallbackProxyEndpoint}${encodeURIComponent(duckDuckGoUrl)}`;
+    return buildProxyUrl(duckDuckGoUrl);
   }
 
   const baseUrl = isAbsoluteEndpoint
