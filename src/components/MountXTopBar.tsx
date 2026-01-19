@@ -55,9 +55,17 @@ export function MountXTopBar() {
       setCurrentView('search');
 
       try {
-        const { results, images } = await searchWeb(input, currentRegion);
+        const { results, images, notice } = await searchWeb(input, currentRegion);
         setSearchResults(results);
         setSearchImages(images);
+        setSearchNotice(
+          notice
+            ? {
+                message: notice,
+                variant: 'warning',
+              }
+            : undefined
+        );
       } catch (error) {
         console.error('Search failed', error);
         setSearchResults([]);

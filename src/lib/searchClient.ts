@@ -19,9 +19,11 @@ type RawSearchImage = {
   source_url?: unknown;
 };
 
+const configuredEndpoint = import.meta.env.VITE_SEARCH_API_URL;
 const defaultSearchEndpoint =
-  import.meta.env.VITE_SEARCH_API_URL ??
-  'https://mountxwork.hatdv617.workers.dev/api/search';
+  configuredEndpoint && configuredEndpoint.trim().length > 0
+    ? configuredEndpoint
+    : 'https://mountxwork.hatdv617.workers.dev/api/search';
 const isAbsoluteEndpoint = /^https?:\/\//i.test(defaultSearchEndpoint);
 
 const isString = (value: unknown): value is string => typeof value === 'string';
@@ -91,7 +93,7 @@ const buildSearchEndpoint = (query: string, region?: Region) => {
 export async function searchWeb(
   query: string,
   region?: Region
-): Promise<{ results: SearchResult[]; images: SearchImage[] }> {
+): Promise<{ results: SearchResult[]; images: SearchImage[]; notice?: string }> {
   const endpoint = buildSearchEndpoint(query, region);
   const response = await fetch(endpoint, {
     method: 'GET',
@@ -101,7 +103,7 @@ export async function searchWeb(
   });
 
   if (!response.ok) {
-    throw new Error('Search request failed.');
+    throw new Error(`Search request failed (${response.status}).`);
   }
 
   const data = (await response.json()) as RawSearchResponse;
@@ -109,6 +111,10 @@ export async function searchWeb(
   return {
     results: normalizeResults(data.results),
     images: normalizeImages(data.images),
+    notice:
+      Array.isArray(data.results) && data.results.length === 0
+        ? 'No results returned from the search provider. Try adjusting your query or region.'
+        : undefined,
   };
 }
 
